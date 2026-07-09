@@ -9,10 +9,16 @@ import (
 	"log/slog"
 	"net"
 	"os"
+	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/moges7624/gredis/internal/resp"
 )
+
+var CRLF = "\r\n"
 
 type Config struct {
 	Addr            string
@@ -155,7 +161,7 @@ func (s *Server) handleConn(parent context.Context, conn net.Conn, id int64) {
 			return
 		}
 
-		line, err := reader.ReadString('\n')
+		line, err := resp.Parse(reader, logger)
 		if err != nil {
 			switch {
 			case errors.Is(err, io.EOF):
@@ -181,15 +187,27 @@ func (s *Server) handleRequest(
 	ctx context.Context,
 	conn net.Conn,
 	_ *slog.Logger,
-	line string,
+	val resp.Value,
 ) error {
 	opCtx, cancel := context.WithTimeout(ctx, s.cfg.WriteTimeout)
 	defer cancel()
 
-	resp := fmt.Sprintf("echo: %s", line)
+	var resp string
 
 	if err := conn.SetWriteDeadline(time.Now().Add(s.cfg.WriteTimeout)); err != nil {
 		return fmt.Errorf("set write deadline: %w", err)
+	}
+
+	cmd := strings.ToUpper(val.Array[0].Str)
+	switch cmd {
+	case "PING":
+		resp = "+PONG\r\n"
+	case "INFO":
+		rep := "# Server\r\nredis_version:7.2.0\r\ntcp_port:6379\r\n"
+		resp = ("$" + strconv.Itoa(len(rep)) + CRLF + string(rep) + CRLF)
+
+	default:
+		resp = "-ERR unknown command 'COMMAND'\r\n"
 	}
 
 	if _, err := conn.Write([]byte(resp)); err != nil {
