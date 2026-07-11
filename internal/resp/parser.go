@@ -17,7 +17,6 @@ type Value struct {
 	Array []Value
 }
 
-// ValueType defines RESP data types
 type ValueType int
 
 const (
@@ -29,30 +28,42 @@ const (
 	Null
 )
 
-func Parse(r *bufio.Reader, logger *slog.Logger) (Value, error) {
-	typeByte, err := r.ReadByte()
+type Parser struct {
+	reader *bufio.Reader
+	logger *slog.Logger
+}
+
+func NewParser(r *bufio.Reader, l *slog.Logger) *Parser {
+	return &Parser{
+		reader: r,
+		logger: l,
+	}
+}
+
+func (p *Parser) Parse() (Value, error) {
+	typeByte, err := p.reader.ReadByte()
 	if err != nil {
 		return Value{}, err
 	}
 
 	switch typeByte {
 	case '+':
-		return parseSimpleString(r, logger)
+		return p.parseSimpleString()
 	case '-':
-		return parseError(r)
+		return p.parseError()
 	case ':':
-		return parseInteger(r)
+		return p.parseInteger()
 	case '$':
-		return parseBulkString(r, logger)
+		return p.parseBulkString()
 	case '*':
-		return parseArray(r, logger)
+		return p.parseArray()
 	default:
 		return Value{}, fmt.Errorf("invalid type")
 	}
 }
 
-func parseSimpleString(r *bufio.Reader, logger *slog.Logger) (Value, error) {
-	line, err := r.ReadString('\n')
+func (p *Parser) parseSimpleString() (Value, error) {
+	line, err := p.reader.ReadString('\n')
 	if err != nil {
 		return Value{}, err
 	}
@@ -61,8 +72,8 @@ func parseSimpleString(r *bufio.Reader, logger *slog.Logger) (Value, error) {
 	return Value{Type: SimpleString, Str: str}, err
 }
 
-func parseError(r *bufio.Reader) (Value, error) {
-	line, err := r.ReadString('\n')
+func (p *Parser) parseError() (Value, error) {
+	line, err := p.reader.ReadString('\n')
 	if err != nil {
 		return Value{}, err
 	}
@@ -70,8 +81,8 @@ func parseError(r *bufio.Reader) (Value, error) {
 	return Value{Type: Error, Str: str}, nil
 }
 
-func parseInteger(r *bufio.Reader) (Value, error) {
-	line, err := r.ReadString('\n')
+func (p *Parser) parseInteger() (Value, error) {
+	line, err := p.reader.ReadString('\n')
 	if err != nil {
 		return Value{}, err
 	}
@@ -82,8 +93,8 @@ func parseInteger(r *bufio.Reader) (Value, error) {
 	return Value{Type: Integer, Int: i}, nil
 }
 
-func parseArray(r *bufio.Reader, logger *slog.Logger) (Value, error) {
-	line, err := r.ReadString('\n')
+func (p *Parser) parseArray() (Value, error) {
+	line, err := p.reader.ReadString('\n')
 	if err != nil {
 		return Value{}, err
 	}
@@ -95,7 +106,7 @@ func parseArray(r *bufio.Reader, logger *slog.Logger) (Value, error) {
 
 	array := make([]Value, count)
 	for i := range count {
-		elem, err := parseBulkString(r, logger)
+		elem, err := p.parseBulkString()
 		if err != nil {
 			return Value{}, nil
 		}
@@ -106,12 +117,12 @@ func parseArray(r *bufio.Reader, logger *slog.Logger) (Value, error) {
 	return Value{Type: Array, Array: array}, nil
 }
 
-func parseBulkString(r *bufio.Reader, logger *slog.Logger) (Value, error) {
-	_, err := r.ReadByte()
+func (p *Parser) parseBulkString() (Value, error) {
+	_, err := p.reader.ReadByte()
 	if err != nil {
 		return Value{}, err
 	}
-	line, err := r.ReadString('\n')
+	line, err := p.reader.ReadString('\n')
 	if err != nil {
 		return Value{}, err
 	}
@@ -122,7 +133,7 @@ func parseBulkString(r *bufio.Reader, logger *slog.Logger) (Value, error) {
 	}
 
 	data := make([]byte, length+2)
-	_, err = r.Read(data)
+	_, err = p.reader.Read(data)
 	if err != nil {
 		return Value{}, err
 	}

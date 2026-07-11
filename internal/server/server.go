@@ -161,7 +161,9 @@ func (s *Server) handleConn(parent context.Context, conn net.Conn, id int64) {
 			return
 		}
 
-		line, err := resp.Parse(reader, logger)
+		// TODO: reuse parser via a pool rather than create new one everytime
+		parser := resp.NewParser(reader, logger)
+		line, err := parser.Parse()
 		if err != nil {
 			switch {
 			case errors.Is(err, io.EOF):
