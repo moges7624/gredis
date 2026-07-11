@@ -4,11 +4,14 @@ package resp
 import (
 	"bufio"
 	"bytes"
-	"fmt"
+	"errors"
+	"io"
 	"log/slog"
 	"strconv"
 	"strings"
 )
+
+var ErrInvalidProtocol = errors.New("protocol error")
 
 type Value struct {
 	Type  ValueType
@@ -58,7 +61,7 @@ func (p *Parser) Parse() (Value, error) {
 	case '*':
 		return p.parseArray()
 	default:
-		return Value{}, fmt.Errorf("invalid type")
+		return Value{}, ErrInvalidProtocol
 	}
 }
 
@@ -108,7 +111,7 @@ func (p *Parser) parseArray() (Value, error) {
 	for i := range count {
 		elem, err := p.parseBulkString()
 		if err != nil {
-			return Value{}, nil
+			return Value{}, err
 		}
 
 		array[i] = elem
@@ -139,7 +142,7 @@ func (p *Parser) parseBulkString() (Value, error) {
 	}
 
 	if !bytes.HasSuffix(data, []byte("\r\n")) {
-		return Value{}, fmt.Errorf("invalid protocol")
+		return Value{}, io.ErrUnexpectedEOF
 	}
 
 	return Value{Type: BulkString, Str: string(data[:length])}, nil
