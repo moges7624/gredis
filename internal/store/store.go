@@ -30,3 +30,18 @@ func (s *Store) Set(key string, val any) {
 	s.data[key] = val
 	s.mu.Unlock()
 }
+
+func (s *Store) Delete(key []string) int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	count := 0
+	for _, k := range key {
+		if _, exists := s.data[k]; exists {
+			count++
+		}
+		delete(s.data, k)
+	}
+
+	return count
+}

@@ -49,3 +49,12 @@ func handleSet(s *store.Store, args []string) []byte {
 
 	return resp.EncodeBulkString("OK")
 }
+
+func handleDel(s *store.Store, args []string) []byte {
+	if len(args) < 1 {
+		return resp.EncodeError("wrong number of arguments for 'del' command")
+	}
+
+	count := s.Delete(args)
+	return resp.EncodeInteger(count)
+}

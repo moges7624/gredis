@@ -31,6 +31,7 @@ func (d *Dispatcher) register() {
 
 	d.handlers["GET"] = handleGet
 	d.handlers["SET"] = handleSet
+	d.handlers["DEL"] = handleDel
 }
 
 func (d *Dispatcher) Handle(args []string) []byte {

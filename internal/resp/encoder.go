@@ -21,3 +21,7 @@ func EncodeBulkString(s string) []byte {
 func EncodeError(err string) []byte {
 	return []byte("-ERR " + err + CRLF)
 }
+
+func EncodeInteger(n int) []byte {
+	return []byte(":" + strconv.Itoa(n) + CRLF)
+}
