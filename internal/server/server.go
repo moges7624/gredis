@@ -9,14 +9,11 @@ import (
 	"log/slog"
 	"net"
 	"os"
-	"strconv"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/moges7624/gredis/internal/resp"
-	"github.com/moges7624/gredis/internal/store"
 )
 
 var CRLF = "\r\n"
@@ -42,8 +39,9 @@ func DefaultConfig() Config {
 }
 
 type Server struct {
-	cfg    Config
-	logger *slog.Logger
+	cfg     Config
+	logger  *slog.Logger
+	handler HandlerFunc
 
 	sem chan struct{}
 	wg  sync.WaitGroup
@@ -51,11 +49,14 @@ type Server struct {
 	act atomic.Int64
 }
 
-func NewServer(cfg Config, logger *slog.Logger) *Server {
+type HandlerFunc func(args []string) []byte
+
+func NewServer(cfg Config, handler HandlerFunc, logger *slog.Logger) *Server {
 	return &Server{
-		cfg:    cfg,
-		logger: logger,
-		sem:    make(chan struct{}, cfg.MaxConnections),
+		cfg:     cfg,
+		logger:  logger,
+		handler: handler,
+		sem:     make(chan struct{}, cfg.MaxConnections),
 	}
 }
 
@@ -79,7 +80,6 @@ func (s *Server) Run(ctx context.Context) error {
 }
 
 func (s *Server) acceptLoop(ctx context.Context, ln net.Listener) {
-	store := store.NewStore()
 	for {
 		conn, err := ln.Accept()
 		if err != nil {
@@ -109,7 +109,7 @@ func (s *Server) acceptLoop(ctx context.Context, ln net.Listener) {
 		go func() {
 			defer s.wg.Done()
 			defer func() { <-s.sem }()
-			s.handleConn(ctx, conn, id, store)
+			s.handleConn(ctx, conn, id)
 		}()
 	}
 }
@@ -133,7 +133,7 @@ func (s *Server) drain() error {
 	}
 }
 
-func (s *Server) handleConn(parent context.Context, conn net.Conn, id int64, store *store.Store) {
+func (s *Server) handleConn(parent context.Context, conn net.Conn, id int64) {
 	ctx, cancel := context.WithCancel(parent)
 	defer cancel()
 	defer conn.Close()
@@ -165,7 +165,7 @@ func (s *Server) handleConn(parent context.Context, conn net.Conn, id int64, sto
 
 		// TODO: reuse parser via a pool rather than create new one everytime
 		parser := resp.NewParser(reader, logger)
-		line, err := parser.Parse()
+		args, err := parser.ParseCommand()
 		if err != nil {
 			switch {
 			case errors.Is(err, io.EOF):
@@ -180,7 +180,7 @@ func (s *Server) handleConn(parent context.Context, conn net.Conn, id int64, sto
 			return
 		}
 
-		if err := s.handleRequest(ctx, conn, logger, line, store); err != nil {
+		if err := s.handleRequest(ctx, conn, logger, args); err != nil {
 			logger.Warn("failed to handle line", "error", err)
 			return
 		}
@@ -191,41 +191,20 @@ func (s *Server) handleRequest(
 	ctx context.Context,
 	conn net.Conn,
 	_ *slog.Logger,
-	val resp.Value,
-	store *store.Store,
+	args []string,
 ) error {
 	opCtx, cancel := context.WithTimeout(ctx, s.cfg.WriteTimeout)
 	defer cancel()
 
-	var resp string
+	var resp []byte
 
 	if err := conn.SetWriteDeadline(time.Now().Add(s.cfg.WriteTimeout)); err != nil {
 		return fmt.Errorf("set write deadline: %w", err)
 	}
 
-	cmd := strings.ToUpper(val.Array[0].Str)
-	switch cmd {
-	case "PING":
-		resp = "+PONG\r\n"
-	case "INFO":
-		rep := "# Server\r\nredis_version:7.2.0\r\ntcp_port:6379\r\n"
-		resp = ("$" + strconv.Itoa(len(rep)) + CRLF + string(rep) + CRLF)
-	case "GET":
-		val, exists := store.Get(val.Array[1].Str)
-		if exists {
-			resp = fmt.Sprintf("+%s\r\n", val)
-		} else {
-			resp = "$-1\r\n"
-		}
-	case "SET":
-		store.Set(val.Array[1].Str, val.Array[2].Str)
-		resp = "+OK\r\n"
+	resp = s.handler(args)
 
-	default:
-		resp = "-ERR unknown command 'COMMAND'\r\n"
-	}
-
-	if _, err := conn.Write([]byte(resp)); err != nil {
+	if _, err := conn.Write(resp); err != nil {
 		return fmt.Errorf("write response: %w", err)
 	}
 

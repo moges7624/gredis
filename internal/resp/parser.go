@@ -5,6 +5,7 @@ import (
 	"bufio"
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"strconv"
@@ -31,6 +32,41 @@ const (
 	Null
 )
 
+func (vt ValueType) String() string {
+	switch vt {
+	case SimpleString:
+		return "Simple String"
+	case Error:
+		return "Error"
+	case Integer:
+		return "Integer"
+	case BulkString:
+		return "Bulk String"
+	case Array:
+		return "Array"
+	case Null:
+		return "Null"
+	default:
+		return fmt.Sprintf("Value Type (%d)", vt)
+	}
+}
+
+func (v Value) toStringArray() ([]string, error) {
+	if v.Type != Array {
+		return nil, fmt.Errorf("%w: expected command array, got %s", ErrInvalidProtocol, v.Type)
+	}
+
+	args := make([]string, 0, len(v.Array))
+	for i, elem := range v.Array {
+		if elem.Type != BulkString {
+			return nil, fmt.Errorf("%w: command argument %d is not a bulk string", ErrInvalidProtocol, i)
+		}
+		args = append(args, elem.Str)
+	}
+
+	return args, nil
+}
+
 type Parser struct {
 	reader *bufio.Reader
 	logger *slog.Logger
@@ -41,6 +77,23 @@ func NewParser(r *bufio.Reader, l *slog.Logger) *Parser {
 		reader: r,
 		logger: l,
 	}
+}
+
+func (p *Parser) ParseCommand() ([]string, error) {
+	v, err := p.Parse()
+	if err != nil {
+		return nil, err
+	}
+
+	if v.Type == 0 && v.Array == nil && v.Str == "" {
+		return nil, nil
+	}
+
+	if v.Type != Array {
+		return nil, fmt.Errorf("%w: expected a command array", ErrInvalidProtocol)
+	}
+
+	return v.toStringArray()
 }
 
 func (p *Parser) Parse() (Value, error) {

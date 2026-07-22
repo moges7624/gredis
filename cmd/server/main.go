@@ -7,7 +7,9 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/moges7624/gredis/internal/command"
 	"github.com/moges7624/gredis/internal/server"
+	"github.com/moges7624/gredis/internal/store"
 )
 
 func main() {
@@ -19,7 +21,10 @@ func main() {
 	defer stop()
 
 	cfg := server.DefaultConfig()
-	server := server.NewServer(cfg, logger)
+	store := store.NewStore()
+	dispatcher := command.NewDispatcher(store)
+
+	server := server.NewServer(cfg, dispatcher.Handle, logger)
 
 	if err := server.Run(ctx); err != nil {
 		logger.Error("server exited with error", "error", err)
