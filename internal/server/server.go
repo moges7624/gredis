@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/moges7624/gredis/internal/resp"
+	"github.com/moges7624/gredis/internal/store"
 )
 
 var CRLF = "\r\n"
@@ -78,6 +79,7 @@ func (s *Server) Run(ctx context.Context) error {
 }
 
 func (s *Server) acceptLoop(ctx context.Context, ln net.Listener) {
+	store := store.NewStore()
 	for {
 		conn, err := ln.Accept()
 		if err != nil {
@@ -107,7 +109,7 @@ func (s *Server) acceptLoop(ctx context.Context, ln net.Listener) {
 		go func() {
 			defer s.wg.Done()
 			defer func() { <-s.sem }()
-			s.handleConn(ctx, conn, id)
+			s.handleConn(ctx, conn, id, store)
 		}()
 	}
 }
@@ -131,7 +133,7 @@ func (s *Server) drain() error {
 	}
 }
 
-func (s *Server) handleConn(parent context.Context, conn net.Conn, id int64) {
+func (s *Server) handleConn(parent context.Context, conn net.Conn, id int64, store *store.Store) {
 	ctx, cancel := context.WithCancel(parent)
 	defer cancel()
 	defer conn.Close()
@@ -178,7 +180,7 @@ func (s *Server) handleConn(parent context.Context, conn net.Conn, id int64) {
 			return
 		}
 
-		if err := s.handleRequest(ctx, conn, logger, line); err != nil {
+		if err := s.handleRequest(ctx, conn, logger, line, store); err != nil {
 			logger.Warn("failed to handle line", "error", err)
 			return
 		}
@@ -190,6 +192,7 @@ func (s *Server) handleRequest(
 	conn net.Conn,
 	_ *slog.Logger,
 	val resp.Value,
+	store *store.Store,
 ) error {
 	opCtx, cancel := context.WithTimeout(ctx, s.cfg.WriteTimeout)
 	defer cancel()
@@ -207,6 +210,16 @@ func (s *Server) handleRequest(
 	case "INFO":
 		rep := "# Server\r\nredis_version:7.2.0\r\ntcp_port:6379\r\n"
 		resp = ("$" + strconv.Itoa(len(rep)) + CRLF + string(rep) + CRLF)
+	case "GET":
+		val, exists := store.Get(val.Array[1].Str)
+		if exists {
+			resp = fmt.Sprintf("+%s\r\n", val)
+		} else {
+			resp = "$-1\r\n"
+		}
+	case "SET":
+		store.Set(val.Array[1].Str, val.Array[2].Str)
+		resp = "+OK\r\n"
 
 	default:
 		resp = "-ERR unknown command 'COMMAND'\r\n"
