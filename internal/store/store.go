@@ -12,12 +12,17 @@ func NewStore() *Store {
 	return store
 }
 
-func (s *Store) Get(key string) (any, bool) {
+func (s *Store) Get(key string) (string, bool) {
 	s.mu.RLock()
 	val, exists := s.data[key]
 	s.mu.RUnlock()
 
-	return val, exists
+	str, isStr := val.(string)
+	if !isStr {
+		return "", false
+	}
+
+	return str, exists
 }
 
 func (s *Store) Set(key string, val any) {

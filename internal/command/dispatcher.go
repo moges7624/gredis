@@ -26,6 +26,7 @@ func NewDispatcher(s *store.Store) *Dispatcher {
 
 func (d *Dispatcher) register() {
 	d.handlers["PING"] = handlePing
+	d.handlers["ECHO"] = handleEcho
 	d.handlers["INFO"] = handleInfo
 
 	d.handlers["GET"] = handleGet
