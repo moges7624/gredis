@@ -1,9 +1,9 @@
 package command
 
 import (
-	"fmt"
 	"strings"
 
+	"github.com/moges7624/gredis/internal/resp"
 	"github.com/moges7624/gredis/internal/store"
 )
 
@@ -34,13 +34,13 @@ func (d *Dispatcher) register() {
 
 func (d *Dispatcher) Handle(args []string) []byte {
 	if len(args) == 0 {
-		return []byte("-ERR unknown command\r\n")
+		return resp.EncodeError("unknown command")
 	}
 
 	name := strings.ToUpper(args[0])
 	h, ok := d.handlers[name]
 	if !ok {
-		return fmt.Appendf(nil, "-ERR unknown command '%s'\r\n", name)
+		return resp.EncodeError("unknown command " + name)
 	}
 
 	return h(d.store, args[1:])
