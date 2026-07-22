@@ -1,6 +1,8 @@
 package command
 
 import (
+	"strconv"
+
 	"github.com/moges7624/gredis/internal/resp"
 	"github.com/moges7624/gredis/internal/store"
 )
@@ -33,7 +35,7 @@ func handleInfo(s *store.Store, args []string) []byte {
 func handleGet(s *store.Store, args []string) []byte {
 	val, exists := s.Get(args[0])
 	if !exists {
-		return resp.EncodeBulkString("-1")
+		return resp.EncodeNullString()
 	}
 
 	return resp.EncodeBulkString(val)
@@ -56,5 +58,41 @@ func handleDel(s *store.Store, args []string) []byte {
 	}
 
 	count := s.Delete(args)
-	return resp.EncodeInteger(count)
+	return resp.EncodeInteger(int64(count))
+}
+
+func handleIncr(s *store.Store, args []string) []byte {
+	if len(args) != 1 {
+		return resp.EncodeError("wrong number of arguments for 'incr' command")
+	}
+
+	val, exists, err := s.IncrBy(args[0], 1)
+	if exists && err != nil {
+		return resp.EncodeError(err.Error())
+	}
+
+	if !exists {
+		s.Set(args[0], strconv.Itoa(1))
+		return resp.EncodeInteger(1)
+	}
+
+	return resp.EncodeInteger(val)
+}
+
+func handleDecr(s *store.Store, args []string) []byte {
+	if len(args) != 1 {
+		return resp.EncodeError("wrong number of arguments for 'incr' command")
+	}
+
+	val, exists, err := s.IncrBy(args[0], -1)
+	if exists && err != nil {
+		return resp.EncodeError(err.Error())
+	}
+
+	if !exists {
+		s.Set(args[0], strconv.Itoa(-1))
+		return resp.EncodeInteger(-1)
+	}
+
+	return resp.EncodeInteger(val)
 }

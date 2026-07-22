@@ -10,11 +10,11 @@ func EncodeSimpleString(s string) []byte {
 	return []byte("+" + s + CRLF)
 }
 
-func EncodeBulkString(s string) []byte {
-	if s == "-1" {
-		return []byte("$-1" + CRLF)
-	}
+func EncodeNullString() []byte {
+	return []byte("$-1" + CRLF)
+}
 
+func EncodeBulkString(s string) []byte {
 	return []byte("$" + strconv.Itoa(len(s)) + CRLF + s + CRLF)
 }
 
@@ -22,6 +22,6 @@ func EncodeError(err string) []byte {
 	return []byte("-ERR " + err + CRLF)
 }
 
-func EncodeInteger(n int) []byte {
-	return []byte(":" + strconv.Itoa(n) + CRLF)
+func EncodeInteger(n int64) []byte {
+	return []byte(":" + strconv.FormatInt(n, 10) + CRLF)
 }
