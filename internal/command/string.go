@@ -33,6 +33,10 @@ func handleInfo(s *store.Store, args []string) []byte {
 }
 
 func handleGet(s *store.Store, args []string) []byte {
+	if len(args) != 1 {
+		return resp.EncodeError("wrong number of arguments for 'get' command")
+	}
+
 	val, exists := s.Get(args[0])
 	if !exists {
 		return resp.EncodeNullString()
@@ -49,7 +53,7 @@ func handleSet(s *store.Store, args []string) []byte {
 	key, val := args[0], args[1]
 	s.Set(key, val)
 
-	return resp.EncodeBulkString("OK")
+	return resp.EncodeSimpleString("OK")
 }
 
 func handleDel(s *store.Store, args []string) []byte {
@@ -81,7 +85,7 @@ func handleIncr(s *store.Store, args []string) []byte {
 
 func handleDecr(s *store.Store, args []string) []byte {
 	if len(args) != 1 {
-		return resp.EncodeError("wrong number of arguments for 'incr' command")
+		return resp.EncodeError("wrong number of arguments for 'decr' command")
 	}
 
 	val, exists, err := s.IncrBy(args[0], -1)

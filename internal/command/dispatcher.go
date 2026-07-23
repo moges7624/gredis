@@ -44,7 +44,7 @@ func (d *Dispatcher) Handle(args []string) []byte {
 	name := strings.ToUpper(args[0])
 	h, ok := d.handlers[name]
 	if !ok {
-		return resp.EncodeError("unknown command " + name)
+		return resp.EncodeError("unknown command '" + name + "'")
 	}
 
 	return h(d.store, args[1:])
