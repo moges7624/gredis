@@ -26,3 +26,12 @@ func handleTTL(s *store.Store, args []string) []byte {
 
 	return resp.EncodeInteger(secs)
 }
+
+func handleExists(s *store.Store, args []string) []byte {
+	if len(args) == 0 {
+		return resp.EncodeError("wrong number of arguments for 'exists' command")
+	}
+
+	cnt := s.Exists(args)
+	return resp.EncodeInteger(int64(cnt))
+}

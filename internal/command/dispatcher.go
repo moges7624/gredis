@@ -30,6 +30,8 @@ func (d *Dispatcher) register() {
 	d.handlers["INFO"] = handleInfo
 
 	d.handlers["TTL"] = handleTTL
+	d.handlers["EXISTS"] = handleExists
+
 	d.handlers["GET"] = handleGet
 	d.handlers["SET"] = handleSet
 	d.handlers["DEL"] = handleDel

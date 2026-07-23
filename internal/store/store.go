@@ -97,6 +97,32 @@ func (s *Store) get(key string) (entry, bool) {
 	return entry{}, false
 }
 
+func (s *Store) Exists(keys []string) int {
+	count := 0
+	for _, k := range keys {
+		if _, ok := s.get(k); ok {
+			count++
+		}
+	}
+
+	return count
+}
+
+func (s *Store) Delete(key []string) int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	count := 0
+	for _, k := range key {
+		if _, exists := s.data[k]; exists {
+			count++
+		}
+		delete(s.data, k)
+	}
+
+	return count
+}
+
 func (s *Store) Close() {
 	s.cleanOnce.Do(func() {
 		close(s.stopChan)

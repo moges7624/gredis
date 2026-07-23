@@ -38,21 +38,6 @@ func (s *Store) Set(key, val string, opts SetOptions) {
 	s.data[key] = e
 }
 
-func (s *Store) Delete(key []string) int {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	count := 0
-	for _, k := range key {
-		if _, exists := s.data[k]; exists {
-			count++
-		}
-		delete(s.data, k)
-	}
-
-	return count
-}
-
 func (s *Store) IncrBy(key string, amount int64) (int64, bool, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()

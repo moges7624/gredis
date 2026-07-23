@@ -2,21 +2,7 @@ package command
 
 import (
 	"testing"
-
-	"github.com/moges7624/gredis/internal/store"
 )
-
-func newDispatcher(t *testing.T) *Dispatcher {
-	t.Helper()
-	db := store.NewStore()
-	t.Cleanup(db.Close)
-	return NewDispatcher(db)
-}
-
-func handle(t *testing.T, d *Dispatcher, args ...string) string {
-	t.Helper()
-	return string(d.Handle(args))
-}
 
 func TestUnknownCommand(t *testing.T) {
 	d := newDispatcher(t)
