@@ -1,12 +1,31 @@
 package store
 
 import (
+	"errors"
 	"sync"
 	"time"
 )
 
+type ValueType int
+
+const (
+	StringType ValueType = iota
+	ListType
+	SetType
+	HashType
+	SortedSetType
+)
+
+var ErrWrongType = errors.New(
+	"WRONGTYPE Operation against a key holding the wrong kind of value",
+)
+
+type Value interface {
+	Type() ValueType
+}
+
 type entry struct {
-	value     any
+	value     Value
 	expiresAt time.Time
 }
 

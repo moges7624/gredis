@@ -39,7 +39,11 @@ func handleGet(s *store.Store, args []string) []byte {
 		return resp.EncodeError("wrong number of arguments for 'get' command")
 	}
 
-	val, exists := s.Get(args[0])
+	val, exists, err := s.Get(args[0])
+	if err != nil {
+		return resp.EncodeError(err.Error())
+	}
+
 	if !exists {
 		return resp.EncodeNullString()
 	}

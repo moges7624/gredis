@@ -1,10 +1,22 @@
 package store
 
 import (
-	"fmt"
+	"errors"
 	"strconv"
 	"time"
 )
+
+var ErrNotInteger = errors.New(
+	"value is not an integer or out of range",
+)
+
+type StringValue struct {
+	data string
+}
+
+func (s *StringValue) Type() ValueType {
+	return StringType
+}
 
 type SetOptions struct {
 	TTL             time.Duration
@@ -12,25 +24,27 @@ type SetOptions struct {
 	OnlyIfNotExists bool
 }
 
-func (s *Store) Get(key string) (string, bool) {
+func (s *Store) Get(key string) (val string, exists bool, err error) {
 	e, exists := s.get(key)
 	if !exists {
-		return "", false
+		return "", false, nil
 	}
 
-	str, isStr := e.value.(string)
-	if !isStr {
-		return "", false
+	strVal, ok := e.value.(*StringValue)
+	if !ok {
+		return "", true, ErrWrongType
 	}
 
-	return str, true
+	return strVal.data, true, nil
 }
 
 func (s *Store) Set(key, val string, opts SetOptions) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	e := entry{value: val}
+	e := entry{
+		value: &StringValue{data: val},
+	}
 	if opts.TTL > 0 {
 		e.expiresAt = time.Now().Add(opts.TTL)
 	}
@@ -47,18 +61,20 @@ func (s *Store) IncrBy(key string, amount int64) (int64, bool, error) {
 		return 0, false, nil
 	}
 
-	str, isStr := e.value.(string)
-	if !isStr {
-		return 0, true, fmt.Errorf("val is not a string")
+	strVal, ok := e.value.(*StringValue)
+	if !ok {
+		return 0, true, ErrWrongType
 	}
 
-	intVal, err := strconv.ParseInt(str, 10, 64)
+	intVal, err := strconv.ParseInt(strVal.data, 10, 64)
 	if err != nil {
-		return 0, true, err
+		return 0, true, ErrNotInteger
 	}
 
 	newAmount := intVal + amount
-	s.data[key] = entry{value: strconv.FormatInt(newAmount, 10)}
+	s.data[key] = entry{
+		value: &StringValue{strconv.FormatInt(newAmount, 10)},
+	}
 
 	return newAmount, true, nil
 }
