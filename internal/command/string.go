@@ -2,6 +2,8 @@ package command
 
 import (
 	"strconv"
+	"strings"
+	"time"
 
 	"github.com/moges7624/gredis/internal/resp"
 	"github.com/moges7624/gredis/internal/store"
@@ -51,7 +53,24 @@ func handleSet(s *store.Store, args []string) []byte {
 	}
 
 	key, val := args[0], args[1]
-	s.Set(key, val)
+	var opts store.SetOptions
+	for i := 2; i < len(args); i++ {
+		switch strings.ToUpper(args[i]) {
+		case "EX":
+			if len(args) <= i+1 {
+				return resp.EncodeError("syntax error")
+			}
+			n, err := strconv.ParseInt(args[i+1], 10, 64)
+			if err != nil || n <= 0 {
+				return resp.EncodeError("invalid expire time in 'set' command")
+			}
+
+			opts.TTL = time.Duration(n) * time.Second
+			i++
+		}
+	}
+
+	s.Set(key, val, opts)
 
 	return resp.EncodeSimpleString("OK")
 }
@@ -76,7 +95,7 @@ func handleIncr(s *store.Store, args []string) []byte {
 	}
 
 	if !exists {
-		s.Set(args[0], strconv.Itoa(1))
+		s.Set(args[0], strconv.Itoa(1), store.SetOptions{})
 		return resp.EncodeInteger(1)
 	}
 
@@ -94,7 +113,7 @@ func handleDecr(s *store.Store, args []string) []byte {
 	}
 
 	if !exists {
-		s.Set(args[0], strconv.Itoa(-1))
+		s.Set(args[0], strconv.Itoa(-1), store.SetOptions{})
 		return resp.EncodeInteger(-1)
 	}
 

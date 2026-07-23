@@ -22,6 +22,8 @@ func main() {
 
 	cfg := server.DefaultConfig()
 	store := store.NewStore()
+	defer store.Close()
+
 	dispatcher := command.NewDispatcher(store)
 
 	server := server.NewServer(cfg, dispatcher.Handle, logger)

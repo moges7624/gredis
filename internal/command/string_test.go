@@ -9,6 +9,7 @@ import (
 func newDispatcher(t *testing.T) *Dispatcher {
 	t.Helper()
 	db := store.NewStore()
+	t.Cleanup(db.Close)
 	return NewDispatcher(db)
 }
 
@@ -146,6 +147,9 @@ func TestDel(t *testing.T) {
 			t.Errorf("got %q, want %q", got, ":2\r\n")
 		}
 	})
+}
+
+func TestSet_EX(t *testing.T) {
 }
 
 func TestIncr(t *testing.T) {
