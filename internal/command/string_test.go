@@ -167,7 +167,7 @@ func TestSet_EX(t *testing.T) {
 func TestIncr(t *testing.T) {
 	d := newDispatcher(t)
 
-	t.Run("INCR with more than 1 arg", func(t *testing.T) {
+	t.Run("With more than 1 arg", func(t *testing.T) {
 		got := handle(t, d, "INCR", "age", "count")
 		want := "-ERR wrong number of arguments for 'incr' command\r\n"
 		if want != got {
@@ -175,19 +175,31 @@ func TestIncr(t *testing.T) {
 		}
 	})
 
-	t.Run("INCR non-existing key", func(t *testing.T) {
+	t.Run("With non-existing key", func(t *testing.T) {
 		if got := handle(t, d, "INCR", "age"); got != ":1\r\n" {
 			t.Errorf("got %q, want %q", got, ":1\r\n")
 		}
 	})
 
-	t.Run("INCR existing key", func(t *testing.T) {
+	t.Run("With existing key", func(t *testing.T) {
 		if got := handle(t, d, "SET", "num", "4"); got != "+OK\r\n" {
 			t.Fatalf("Error setting key for incr: got %q, want %q", got, "+OK\r\n")
 		}
 
 		if got := handle(t, d, "INCR", "num"); got != ":5\r\n" {
 			t.Errorf("got %q, want %q", got, ":5\r\n")
+		}
+	})
+
+	t.Run("With a key holding non-integer string value", func(t *testing.T) {
+		if got := handle(t, d, "SET", "foo", "bar"); got != "+OK\r\n" {
+			t.Fatalf("Error setting key for incr: got %q, want %q", got, "+OK\r\n")
+		}
+
+		got := handle(t, d, "INCR", "foo")
+		want := "-ERR value is not an integer or out of range\r\n"
+		if want != got {
+			t.Errorf("got %q, want %q", got, want)
 		}
 	})
 }
@@ -216,6 +228,18 @@ func TestDecr(t *testing.T) {
 
 		if got := handle(t, d, "decr", "num"); got != ":3\r\n" {
 			t.Errorf("got %q, want %q", got, ":3\r\n")
+		}
+	})
+
+	t.Run("With a key holding non-integer string value", func(t *testing.T) {
+		if got := handle(t, d, "SET", "foo", "bar"); got != "+OK\r\n" {
+			t.Fatalf("Error setting key for decr: got %q, want %q", got, "+OK\r\n")
+		}
+
+		got := handle(t, d, "DECR", "foo")
+		want := "-ERR value is not an integer or out of range\r\n"
+		if want != got {
+			t.Errorf("got %q, want %q", got, want)
 		}
 	})
 }
