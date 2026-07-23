@@ -127,6 +127,28 @@ func (s *Store) Exists(keys []string) int {
 	return count
 }
 
+func (s *Store) Type(key string) string {
+	e, exists := s.get(key)
+	if !exists {
+		return "none"
+	}
+
+	switch e.value.Type() {
+	case StringType:
+		return "string"
+	case ListType:
+		return "list"
+	case SetType:
+		return "set"
+	case HashType:
+		return "hash"
+	case SortedSetType:
+		return "zset"
+	default:
+		return "none"
+	}
+}
+
 func (s *Store) Delete(key []string) int {
 	s.mu.Lock()
 	defer s.mu.Unlock()

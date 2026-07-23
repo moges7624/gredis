@@ -62,3 +62,26 @@ func TestHandleExists(t *testing.T) {
 		}
 	})
 }
+
+func TestHandleType(t *testing.T) {
+	d := newDispatcher(t)
+
+	t.Run("with no key", func(t *testing.T) {
+		want := "-ERR wrong number of arguments for 'type' command\r\n"
+		got := handle(t, d, "type")
+
+		if got != want {
+			t.Errorf("got %q, want %q", got, want)
+		}
+	})
+
+	t.Run("with key holding string val", func(t *testing.T) {
+		if got := handle(t, d, "SET", "foo", "bar"); got != "+OK\r\n" {
+			t.Fatalf("Error setting key for del: got %q, want %q", got, "+OK\r\n")
+		}
+
+		if got := handle(t, d, "TYPE", "foo"); got != "+string\r\n" {
+			t.Errorf("got %q, want %q", got, "+string\r\n")
+		}
+	})
+}

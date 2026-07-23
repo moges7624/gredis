@@ -35,3 +35,12 @@ func handleExists(s *store.Store, args []string) []byte {
 	cnt := s.Exists(args)
 	return resp.EncodeInteger(int64(cnt))
 }
+
+func handleType(s *store.Store, args []string) []byte {
+	if len(args) != 1 {
+		return resp.EncodeError("wrong number of arguments for 'type' command")
+	}
+
+	t := s.Type(args[0])
+	return resp.EncodeSimpleString(t)
+}
