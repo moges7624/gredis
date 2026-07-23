@@ -29,6 +29,7 @@ func (d *Dispatcher) register() {
 	d.handlers["ECHO"] = handleEcho
 	d.handlers["INFO"] = handleInfo
 
+	d.handlers["TTL"] = handleTTL
 	d.handlers["GET"] = handleGet
 	d.handlers["SET"] = handleSet
 	d.handlers["DEL"] = handleDel

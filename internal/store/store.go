@@ -57,6 +57,24 @@ func (s *Store) cleanupExpired(now time.Time) {
 	}
 }
 
+func (s *Store) TTL(key string) (ttl time.Duration, exists bool, hasTTL bool) {
+	e, exists := s.get(key)
+	if !exists {
+		return 0, false, false
+	}
+
+	if e.expiresAt.IsZero() {
+		return 0, true, false
+	}
+
+	remaining := time.Until(e.expiresAt)
+	if remaining < 0 {
+		remaining = 0
+	}
+
+	return remaining, true, true
+}
+
 func (s *Store) get(key string) (entry, bool) {
 	s.mu.RLock()
 	e, exists := s.data[key]
