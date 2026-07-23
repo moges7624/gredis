@@ -150,6 +150,32 @@ func TestDel(t *testing.T) {
 }
 
 func TestSet_EX(t *testing.T) {
+	d := newDispatcher(t)
+
+	t.Run("EX with no expire time arg", func(t *testing.T) {
+		want := "-ERR syntax error\r\n"
+		got := handle(t, d, "SET", "name", "john", "EX")
+		if got != want {
+			t.Errorf("got %q, want %q", got, want)
+		}
+	})
+
+	t.Run("EX with invalid expire time", func(t *testing.T) {
+		want := "-ERR invalid expire time in 'set' command\r\n"
+		got := handle(t, d, "SET", "name", "john", "EX", "0")
+
+		if got != want {
+			t.Errorf("got %q, want %q", got, want)
+		}
+	})
+
+	t.Run("EX with valid expire time", func(t *testing.T) {
+		want := "+OK\r\n"
+		got := handle(t, d, "SET", "name", "john", "EX", "120")
+		if got != want {
+			t.Errorf("got %q, want %q", got, want)
+		}
+	})
 }
 
 func TestIncr(t *testing.T) {
