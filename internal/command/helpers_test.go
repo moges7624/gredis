@@ -32,3 +32,27 @@ func parseIntegerReply(t *testing.T, reply string) int64 {
 	}
 	return n
 }
+
+func setValueWithDeleteCleanUp(t *testing.T, d *Dispatcher, args ...string) {
+	t.Helper()
+	isSet := true
+
+	args = append([]string{"SET"}, args...)
+	if res := handle(t, d, args...); res != "+OK\r\n" {
+		isSet = false
+		t.Fatalf("error setting value for: %s", t.Name())
+	}
+
+	t.Cleanup(func() {
+		if isSet {
+			handle(t, d, "del", args[1])
+		}
+	})
+}
+
+func deleteKey(t *testing.T, d *Dispatcher, key string) {
+	t.Helper()
+	if res := parseIntegerReply(t, handle(t, d, "del", key)); res != 1 {
+		t.Fatalf("error deleting key for: %s", t.Name())
+	}
+}

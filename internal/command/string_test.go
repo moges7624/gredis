@@ -70,9 +70,12 @@ func TestSetGet(t *testing.T) {
 		if got := handle(t, d, "SET", "foo", "bar"); got != "+OK\r\n" {
 			t.Fatalf("got %q, want %q", got, "+OK\r\n")
 		}
+
+		deleteKey(t, d, "foo")
 	})
 
 	t.Run("GET existing key", func(t *testing.T) {
+		setValueWithDeleteCleanUp(t, d, "foo", "bar")
 		if got := handle(t, d, "GET", "foo"); got != "$3\r\nbar\r\n" {
 			t.Errorf("got %q, want %q", got, "$3\r\nbar\r\n")
 		}
@@ -128,6 +131,8 @@ func TestSet_EX(t *testing.T) {
 		if got != want {
 			t.Errorf("got %q, want %q", got, want)
 		}
+
+		deleteKey(t, d, "name")
 	})
 }
 
@@ -148,12 +153,12 @@ func TestSet_NXAndXX(t *testing.T) {
 		if got != want {
 			t.Errorf("got %q, want %q", got, want)
 		}
+
+		deleteKey(t, d, "name")
 	})
 
 	t.Run("With nx and existing key", func(t *testing.T) {
-		if got := handle(t, d, "SET", "name", "john"); got != "+OK\r\n" {
-			t.Fatalf("Error setting key for set nx: got %q, want %q", got, "+OK\r\n")
-		}
+		setValueWithDeleteCleanUp(t, d, "name", "john")
 
 		want := "$-1\r\n"
 		got := handle(t, d, "SET", "name", "john", "NX")
@@ -164,16 +169,14 @@ func TestSet_NXAndXX(t *testing.T) {
 
 	t.Run("With xx and non-existing key", func(t *testing.T) {
 		want := "$-1\r\n"
-		got := handle(t, d, "SET", "foo", "bar", "XX")
+		got := handle(t, d, "SET", "name", "bar", "XX")
 		if got != want {
 			t.Errorf("got %q, want %q", got, want)
 		}
 	})
 
 	t.Run("With xx and existing key", func(t *testing.T) {
-		if got := handle(t, d, "SET", "name", "john"); got != "+OK\r\n" {
-			t.Fatalf("Error setting key for set xx: got %q, want %q", got, "+OK\r\n")
-		}
+		setValueWithDeleteCleanUp(t, d, "name", "john")
 
 		want := "+OK\r\n"
 		got := handle(t, d, "SET", "name", "john", "XX")
@@ -243,9 +246,7 @@ func TestIncr(t *testing.T) {
 	})
 
 	t.Run("With existing key", func(t *testing.T) {
-		if got := handle(t, d, "SET", "num", "4"); got != "+OK\r\n" {
-			t.Fatalf("Error setting key for incr: got %q, want %q", got, "+OK\r\n")
-		}
+		setValueWithDeleteCleanUp(t, d, "num", "4")
 
 		if got := handle(t, d, "INCR", "num"); got != ":5\r\n" {
 			t.Errorf("got %q, want %q", got, ":5\r\n")
@@ -253,9 +254,7 @@ func TestIncr(t *testing.T) {
 	})
 
 	t.Run("With a key holding non-integer string value", func(t *testing.T) {
-		if got := handle(t, d, "SET", "foo", "bar"); got != "+OK\r\n" {
-			t.Fatalf("Error setting key for incr: got %q, want %q", got, "+OK\r\n")
-		}
+		setValueWithDeleteCleanUp(t, d, "foo", "bar")
 
 		got := handle(t, d, "INCR", "foo")
 		want := "-ERR value is not an integer or out of range\r\n"
@@ -283,9 +282,7 @@ func TestDecr(t *testing.T) {
 	})
 
 	t.Run("DECR existing key", func(t *testing.T) {
-		if got := handle(t, d, "SET", "num", "4"); got != "+OK\r\n" {
-			t.Fatalf("Error setting key for decr: got %q, want %q", got, "+OK\r\n")
-		}
+		setValueWithDeleteCleanUp(t, d, "num", "4")
 
 		if got := handle(t, d, "decr", "num"); got != ":3\r\n" {
 			t.Errorf("got %q, want %q", got, ":3\r\n")
@@ -293,9 +290,7 @@ func TestDecr(t *testing.T) {
 	})
 
 	t.Run("With a key holding non-integer string value", func(t *testing.T) {
-		if got := handle(t, d, "SET", "foo", "bar"); got != "+OK\r\n" {
-			t.Fatalf("Error setting key for decr: got %q, want %q", got, "+OK\r\n")
-		}
+		setValueWithDeleteCleanUp(t, d, "foo", "bar")
 
 		got := handle(t, d, "DECR", "foo")
 		want := "-ERR value is not an integer or out of range\r\n"
