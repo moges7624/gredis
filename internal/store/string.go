@@ -25,7 +25,10 @@ type SetOptions struct {
 }
 
 func (s *Store) Get(key string) (val string, exists bool, err error) {
+	s.mu.RLock()
 	e, exists := s.get(key)
+	s.mu.RUnlock()
+
 	if !exists {
 		return "", false, nil
 	}

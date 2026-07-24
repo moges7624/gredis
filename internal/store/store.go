@@ -77,6 +77,9 @@ func (s *Store) cleanupExpired(now time.Time) {
 }
 
 func (s *Store) TTL(key string) (ttl time.Duration, exists bool, hasTTL bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	e, exists := s.get(key)
 	if !exists {
 		return 0, false, false
@@ -95,28 +98,19 @@ func (s *Store) TTL(key string) (ttl time.Duration, exists bool, hasTTL bool) {
 }
 
 func (s *Store) get(key string) (entry, bool) {
-	s.mu.RLock()
 	e, exists := s.data[key]
-	s.mu.RUnlock()
 
-	if !exists {
+	if !exists || e.expired(time.Now()) {
 		return entry{}, false
 	}
 
-	if !e.expired(time.Now()) {
-		return e, true
-	}
-
-	s.mu.Lock()
-	if e2, exists := s.data[key]; exists && e2.expired(time.Now()) {
-		delete(s.data, key)
-	}
-	s.mu.Unlock()
-
-	return entry{}, false
+	return e, true
 }
 
 func (s *Store) Exists(keys []string) int {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
 	count := 0
 	for _, k := range keys {
 		if _, ok := s.get(k); ok {
@@ -128,7 +122,10 @@ func (s *Store) Exists(keys []string) int {
 }
 
 func (s *Store) Type(key string) string {
+	s.mu.RLock()
 	e, exists := s.get(key)
+	s.mu.RUnlock()
+
 	if !exists {
 		return "none"
 	}
