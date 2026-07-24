@@ -93,6 +93,96 @@ func TestSetGet(t *testing.T) {
 	})
 }
 
+func TestSet_EX(t *testing.T) {
+	d := newDispatcher(t)
+
+	t.Run("EX with no expire time arg", func(t *testing.T) {
+		want := "-ERR syntax error\r\n"
+		got := handle(t, d, "SET", "name", "john", "EX")
+		if got != want {
+			t.Errorf("got %q, want %q", got, want)
+		}
+	})
+
+	t.Run("EX with invalid non-integer expire time", func(t *testing.T) {
+		want := "-ERR value is not an integer or out of range\r\n"
+		got := handle(t, d, "SET", "name", "john", "EX", "today")
+
+		if got != want {
+			t.Errorf("got %q, want %q", got, want)
+		}
+	})
+
+	t.Run("EX with invalid integer expire time", func(t *testing.T) {
+		want := "-ERR invalid expire time in 'set' command\r\n"
+		got := handle(t, d, "SET", "name", "john", "EX", "0")
+
+		if got != want {
+			t.Errorf("got %q, want %q", got, want)
+		}
+	})
+
+	t.Run("EX with valid expire time", func(t *testing.T) {
+		want := "+OK\r\n"
+		got := handle(t, d, "SET", "name", "john", "EX", "120")
+		if got != want {
+			t.Errorf("got %q, want %q", got, want)
+		}
+	})
+}
+
+func TestSet_NXAndXX(t *testing.T) {
+	d := newDispatcher(t)
+
+	t.Run("With both nx and xx arg", func(t *testing.T) {
+		want := "-ERR syntax error\r\n"
+		got := handle(t, d, "SET", "name", "john", "NX", "XX")
+		if got != want {
+			t.Errorf("got %q, want %q", got, want)
+		}
+	})
+
+	t.Run("With nx and non-existing key", func(t *testing.T) {
+		want := "+OK\r\n"
+		got := handle(t, d, "SET", "name", "john", "NX")
+		if got != want {
+			t.Errorf("got %q, want %q", got, want)
+		}
+	})
+
+	t.Run("With nx and existing key", func(t *testing.T) {
+		if got := handle(t, d, "SET", "name", "john"); got != "+OK\r\n" {
+			t.Fatalf("Error setting key for set nx: got %q, want %q", got, "+OK\r\n")
+		}
+
+		want := "$-1\r\n"
+		got := handle(t, d, "SET", "name", "john", "NX")
+		if got != want {
+			t.Errorf("got %q, want %q", got, want)
+		}
+	})
+
+	t.Run("With xx and non-existing key", func(t *testing.T) {
+		want := "$-1\r\n"
+		got := handle(t, d, "SET", "foo", "bar", "XX")
+		if got != want {
+			t.Errorf("got %q, want %q", got, want)
+		}
+	})
+
+	t.Run("With xx and existing key", func(t *testing.T) {
+		if got := handle(t, d, "SET", "name", "john"); got != "+OK\r\n" {
+			t.Fatalf("Error setting key for set xx: got %q, want %q", got, "+OK\r\n")
+		}
+
+		want := "+OK\r\n"
+		got := handle(t, d, "SET", "name", "john", "XX")
+		if got != want {
+			t.Errorf("got %q, want %q", got, want)
+		}
+	})
+}
+
 func TestDel(t *testing.T) {
 	d := newDispatcher(t)
 
@@ -131,35 +221,6 @@ func TestDel(t *testing.T) {
 
 		if got := handle(t, d, "del", "foo", "name"); got != ":2\r\n" {
 			t.Errorf("got %q, want %q", got, ":2\r\n")
-		}
-	})
-}
-
-func TestSet_EX(t *testing.T) {
-	d := newDispatcher(t)
-
-	t.Run("EX with no expire time arg", func(t *testing.T) {
-		want := "-ERR syntax error\r\n"
-		got := handle(t, d, "SET", "name", "john", "EX")
-		if got != want {
-			t.Errorf("got %q, want %q", got, want)
-		}
-	})
-
-	t.Run("EX with invalid expire time", func(t *testing.T) {
-		want := "-ERR invalid expire time in 'set' command\r\n"
-		got := handle(t, d, "SET", "name", "john", "EX", "0")
-
-		if got != want {
-			t.Errorf("got %q, want %q", got, want)
-		}
-	})
-
-	t.Run("EX with valid expire time", func(t *testing.T) {
-		want := "+OK\r\n"
-		got := handle(t, d, "SET", "name", "john", "EX", "120")
-		if got != want {
-			t.Errorf("got %q, want %q", got, want)
 		}
 	})
 }

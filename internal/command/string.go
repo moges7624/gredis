@@ -64,17 +64,35 @@ func handleSet(s *store.Store, args []string) []byte {
 			if len(args) <= i+1 {
 				return resp.EncodeError("syntax error")
 			}
+
 			n, err := strconv.ParseInt(args[i+1], 10, 64)
-			if err != nil || n <= 0 {
+			if err != nil {
+				return resp.EncodeError("value is not an integer or out of range")
+			}
+			if n <= 0 {
 				return resp.EncodeError("invalid expire time in 'set' command")
 			}
 
 			opts.TTL = time.Duration(n) * time.Second
 			i++
+		case "NX":
+			if opts.OnlyIfExists {
+				return resp.EncodeError("syntax error")
+			}
+			opts.OnlyIfNotExists = true
+		case "XX":
+			if opts.OnlyIfNotExists {
+				return resp.EncodeError("syntax error")
+			}
+			opts.OnlyIfExists = true
+		default:
+			return resp.EncodeError("syntax error")
 		}
 	}
 
-	s.Set(key, val, opts)
+	if !s.Set(key, val, opts) {
+		return resp.EncodeNullString()
+	}
 
 	return resp.EncodeSimpleString("OK")
 }

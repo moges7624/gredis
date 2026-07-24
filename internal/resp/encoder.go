@@ -2,6 +2,7 @@ package resp
 
 import (
 	"strconv"
+	"strings"
 )
 
 var CRLF = "\r\n"
@@ -19,6 +20,10 @@ func EncodeBulkString(s string) []byte {
 }
 
 func EncodeError(err string) []byte {
+	if strings.HasPrefix(err, "WRONGTYPE") {
+		return []byte("-" + err + CRLF)
+	}
+
 	return []byte("-ERR " + err + CRLF)
 }
 

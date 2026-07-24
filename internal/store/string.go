@@ -38,18 +38,32 @@ func (s *Store) Get(key string) (val string, exists bool, err error) {
 	return strVal.data, true, nil
 }
 
-func (s *Store) Set(key, val string, opts SetOptions) {
+func (s *Store) Set(key, val string, opts SetOptions) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	e := entry{
+	e, exists := s.data[key]
+	if exists && e.expired(time.Now()) {
+		exists = false
+	}
+
+	if opts.OnlyIfExists && !exists {
+		return false
+	}
+
+	if opts.OnlyIfNotExists && exists {
+		return false
+	}
+
+	ne := entry{
 		value: &StringValue{data: val},
 	}
 	if opts.TTL > 0 {
-		e.expiresAt = time.Now().Add(opts.TTL)
+		ne.expiresAt = time.Now().Add(opts.TTL)
 	}
 
-	s.data[key] = e
+	s.data[key] = ne
+	return true
 }
 
 func (s *Store) IncrBy(key string, amount int64) (int64, bool, error) {
