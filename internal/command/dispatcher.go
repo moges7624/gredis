@@ -38,6 +38,9 @@ func (d *Dispatcher) register() {
 	d.handlers["DEL"] = handleDel
 	d.handlers["INCR"] = handleIncr
 	d.handlers["DECR"] = handleDecr
+
+	d.handlers["LLEN"] = handleLLen
+	d.handlers["RPUSH"] = handleRPush
 }
 
 func (d *Dispatcher) Handle(args []string) []byte {

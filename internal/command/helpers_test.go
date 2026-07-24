@@ -56,3 +56,7 @@ func deleteKey(t *testing.T, d *Dispatcher, key string) {
 		t.Fatalf("error deleting key for: %s", t.Name())
 	}
 }
+
+func wrongArgumentNumberErrString(command string) string {
+	return "-ERR wrong number of arguments for '" + command + "' command\r\n"
+}

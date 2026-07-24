@@ -27,6 +27,10 @@ func EncodeError(err string) []byte {
 	return []byte("-ERR " + err + CRLF)
 }
 
+func EncodeWrongArgumentNumber(command string) []byte {
+	return EncodeError("wrong number of arguments for '" + command + "' command")
+}
+
 func EncodeInteger(n int64) []byte {
 	return []byte(":" + strconv.FormatInt(n, 10) + CRLF)
 }
